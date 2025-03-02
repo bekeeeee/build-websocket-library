@@ -1,0 +1,126 @@
+html {
+    font-family: 'Courier New', Courier, monospace;
+    background-color: #333;
+}
+
+/* our main div wrapper */
+#wrapper {
+    width: 600px;
+    background: #FFF;
+    border-top: 5px solid rgb(74, 207, 74);
+    /* pad everything inside of the wrapper, relative to font-size */
+    padding: 1em;
+    /* center the wrapper with auto, and add top/bottom margin of 1em */
+    margin: 1em auto;
+    /* apply a slight box-shadow */
+    box-shadow: 0 5px 10px;
+}
+
+h1 {
+    /* remove the excess margin on top of our h1 element */
+    margin-top: 0;
+}
+
+/* style status update messages */
+#status {
+    /* have status display next to button */
+    display: inline;
+}
+
+#server_response {
+    margin-top: 1em;
+}
+
+textarea {
+    width: 100%; /* stretch the textarea across its parent, the <div> element */
+    padding: 0.7rem; /* apply padding to the text inside of our textarea, across all 4 sides of the textarea */
+    border: 1px solid #9a9a9a;
+    border-radius: 3px; /* curve border sides ever so slightly */
+    min-height: 20%; /* element will be 20% of its parent container's height */
+    margin-bottom: 1em;
+}
+
+button {
+    border: none;
+    padding: 0.5rem 0.9rem;
+    font-size: 0.9rem;
+    border-radius: 3px;
+    color: rgb(24, 24, 24);
+    border-bottom: 1px solid black;
+    background: rgb(228, 79, 79);
+}
+
+button[type="submit"] {
+    background: rgb(112, 223, 119);
+}
+
+button:hover {
+    background: blue;
+    opacity: 0.7;
+    color: white;
+    cursor: pointer;
+}
+
+#form {
+    /* when page first loads, we don't want user to see it. Remember, they have to first open up a WS connection */
+    display: none; 
+}
+
+#form.show {
+    display: inline;
+}
+
+.open {
+    color: limegreen;
+    font-weight: bold;
+}
+
+.closed {
+    color: rgb(163, 26, 26);
+    font-weight: bold;
+}
+
+.closing {
+    color: rgb(209, 101, 18);
+}
+
+
+ul {
+    list-style: none;
+    padding: 0;
+    font-size: 0,9em;
+}
+
+ul li {
+    padding: 0.5em 1em;
+    border-bottom: 1px solid #c5c5c5;
+    overflow-wrap: break-word;
+}
+
+ul li:first-child {
+    border-top: 1px solid #c5c5c5;;
+}
+
+ul li span {
+    display: inline-block;
+    width: 20%;
+    font-weight: bold;
+    color: #adadad;
+    font-size: 0.75em;
+    letter-spacing: 1px;
+}
+
+.sent {
+    background-color: #eeeded;
+}
+
+button#medium_sized_message {
+    background-color: #333;
+    padding: 0.5rem 0.9rem;
+    font-size: 0.5rem;
+    border-radius: 3px;
+    color: rgb(24, 24, 24);
+    border-bottom: 1px solid black;
+    background: rgb(167, 62, 236);
+    float: right
+}

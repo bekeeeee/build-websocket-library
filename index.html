@@ -1,0 +1,143 @@
+<html>
+  <head>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="wrapper">
+      <!-- headers -->
+      <h1>WebSockets Echo Demo</h1>
+      <button type="submit" id="open_ws">Open WS</button>
+      <div id="status">Status: Not connected</div>
+      <!-- message table -->
+      <ul id="table"></ul>
+      <!-- form -->
+      <form id="form">
+        <textarea
+          id="message"
+          placeholder="Write your message here..."
+          required
+        ></textarea>
+        <button type="submit">Send Message</button>
+        <button id="close_ws">Close Connection</button>
+      </form>
+    </div>
+    <script>
+      // *** DOM ELEMENTS ***
+      // buttons
+      let open_ws_btn = document.getElementById("open_ws");
+      let close_ws_btn = document.getElementById("close_ws");
+      //form
+      let form = document.getElementById("form");
+      // other message related items
+      let socketStatus = document.getElementById("status");
+      let table = document.getElementsByTagName("ul")[0];
+      let message = document.getElementById("message");
+
+      // *** WEBSOCKET SERVER ***
+      open_ws_btn.addEventListener("click", () => {
+        // BUTTON styling. when button is clicked, diable its use.
+        open_ws_btn.disabled = true;
+        open_ws_btn.style.background = "gray";
+        open_ws_btn.style.pointerEvents = "none";
+        open_ws_btn.textContent = "Button disabled";
+
+        // TEXT: change the status message when the user starts opening a WS connection
+        socketStatus.innerHTML = "Connecting ...";
+
+        // #1 define websocket server location
+        let url = "ws://127.0.0.1:8088";
+        // #2. open up websocket server, using the client-side WebSocket API
+        let socket = new WebSocket(url);
+
+        // ## EVENT 1 of 4.
+        // OPEN EVENT
+        socket.onopen = openEvent => {
+          // check its readyState property, it should be in connected state inside here as the 'open' event has been fired
+          console.log("SOCKET CONNECTING STATUS IS: " + socket.readyState);
+          // reset table values
+          table.innerHTML = "";
+          // provide client-side feedback
+          console.log("SOCKET CONNECTING STATUS IS: " + socket.readyState);
+          socketStatus.innerHTML = `Connected to: ${openEvent.currentTarget.url}`;
+          socketStatus.className = "open";
+          // show the form
+          form.className = "show"; // you can also use the classList API
+        };
+
+        // ## EVENT 2 of 4.
+        // MESSAGE EVENT: handle messages when they are received from server
+        socket.onmessage = function (message) {
+          // we will write this code together, later
+        };
+
+        // ## EVENT 3 of 4.
+        // CLOSE EVENT
+        socket.onclose = closeEventObject => {
+          console.log("CLOSE EVENT FIRED. CLOSE OBJECT", closeEventObject);
+          // let's style our closure text consistently across all scenarios
+          socketStatus.className = "closed";
+          table.innerHTML = "";
+          // using JavaScript's switch statement
+          switch (closeEventObject.code) {
+            case 1006: // network problem (e.g. your websocket server is not running)
+              socketStatus.innerHTML =
+                "Something is wrong with your WS newtork connection";
+              break;
+            case 1001: // if a peer (client or server) closes the connection immediately
+              socketStatus.innerHTML = `Disconnected reason: ${closeEventObject.reason}`;
+              table.innerHTML = "";
+              break;
+            default: // when the client hits the close websocket button
+              socketStatus.innerHTML = `You disconnected by clicking the Close button.`;
+          }
+
+          // CSS: FORM REMOVAL
+          form.classList.remove("show");
+          message.setAttribute("required", "true");
+          // CSS: BUTTON styling. When button is clicked, diable its use.
+          open_ws_btn.disabled = false;
+          open_ws_btn.style.background = "";
+          open_ws_btn.style.pointerEvents = "";
+          open_ws_btn.textContent = "Open WS";
+        };
+
+        // ## EVENT 4 of 4.
+        // ERROR EVENT
+        socket.onerror = error => {
+          console.log("Error event was thrown. ERROR OBJECT: ", error);
+          socketStatus.innerHTML = "Error.";
+          socketStatus.className = "closed";
+        };
+
+        // ## METHOD 1 of 2.
+        // *** SEND METHOD
+        form.addEventListener("submit", e => {
+          // stop default browswer refresh
+          e.preventDefault();
+
+          // implement extra safety measure by checking readyState before sending WS data
+          if (socket.readyState === 1) {
+            let user_text = message.value;
+            socket.send(user_text); // use the send() method given to us by the WebSocket API
+            // update our table
+            table.innerHTML +=
+              '<li class="sent"><span>SENT:</span>' + user_text + "</li>";
+            message.value = "";
+          }
+        });
+
+        // ## METHOD 2 of 2.
+        // *** CLOSE METHOD
+        close_ws_btn.addEventListener("click", () => {
+          socketStatus.innerHTML = "closing ... please wait ...";
+          socketStatus.classList.add("closing");
+          // close the websocket connection
+          socket.close(1000, "I don't like you"); // use the close() method on WebSocket API to send a closure code and reason to the server and close the WS connection
+          // styling
+          message.removeAttribute("required");
+          form.classList.remove("show");
+        });
+      });
+    </script>
+  </body>
+</html>
