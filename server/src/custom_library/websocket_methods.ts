@@ -1,7 +1,6 @@
 import {CONSTANTS} from "./websocket_constants";
 import internal from "stream";
 import * as crypto from "crypto";
-import {server} from "typescript";
 
 export function isOriginalAllowed(origin: string): boolean {
   return CONSTANTS.ALLOWED_ORIGINS.includes(origin);
@@ -46,6 +45,16 @@ export function createUpgradeHeaders(clientKey: string) {
   return headers.join("\r\n") + "\r\n\r\n";
 }
 
+export function unmaskPayload(
+  payloadBuffer: Buffer<ArrayBuffer>,
+  maskKey: Buffer<ArrayBuffer>
+) {
+  const unmaskedPayload = Buffer.alloc(payloadBuffer.length);
+  for (let i = 0; i < payloadBuffer.length; i++) {
+    unmaskedPayload[i] = payloadBuffer[i] ^ maskKey[i % 4];
+  }
+  return unmaskedPayload;
+}
 function generateServerKey(clientKey: string): string {
   // concat / join the client key with the GUID
   let data = clientKey + CONSTANTS.GUID;
