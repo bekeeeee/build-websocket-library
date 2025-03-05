@@ -19,6 +19,7 @@
         ></textarea>
         <button type="submit">Send Message</button>
         <button id="close_ws">Close Connection</button>
+        <button type="button" id="populate">Populate</button>
       </form>
     </div>
     <script>
@@ -26,12 +27,14 @@
       // buttons
       let open_ws_btn = document.getElementById("open_ws");
       let close_ws_btn = document.getElementById("close_ws");
+      let populate_btn = document.getElementById("populate");
       //form
       let form = document.getElementById("form");
       // other message related items
       let socketStatus = document.getElementById("status");
       let table = document.getElementsByTagName("ul")[0];
       let message = document.getElementById("message");
+      let text = "A".repeat(150000);
 
       // *** WEBSOCKET SERVER ***
       open_ws_btn.addEventListener("click", () => {
@@ -62,6 +65,9 @@
           socketStatus.className = "open";
           // show the form
           form.className = "show"; // you can also use the classList API
+          populate_btn.addEventListener("click", () => {
+            message.value = text;
+          });
         };
 
         // ## EVENT 2 of 4.
