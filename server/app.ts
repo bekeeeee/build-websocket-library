@@ -4,12 +4,13 @@ import * as FUNCTIONS from "./src/custom_library/websocket_methods";
 import {IncomingMessage as Request} from "http";
 
 import internal from "stream";
-
+let clientNumber = 0;
 const GET_INFO = 1;
 const GET_LENGTH = 2;
 const GET_MASK_KEY = 3;
 const GET_PAYLOAD = 4;
 const SEND_ECHO = 5;
+const GET_CLOSE_INFO = 6;
 
 // import the custom libraries
 
@@ -74,7 +75,10 @@ function upgradeConnection(
 }
 
 function startWebSocketConnection(socket: internal.Duplex) {
-  console.log("WebSocket connection established");
+  console.log(
+    "WebSocket connection established WITH CLIENT PORT: ",
+    (socket as any).remotePort
+  );
   const receiver = new WebSocketReceiver(socket);
   socket.on("data", chunk => {
     console.log("Received data");
@@ -102,6 +106,8 @@ class WebSocketReceiver {
   constructor(socket: internal.Duplex) {
     console.log("WebSocketReceiver constructor");
     this._socket = socket;
+    clientNumber++;
+    console.log("clientNumber: " + clientNumber);
   }
   processBuffer(chunk: Buffer) {
     this._buffersArray.push(chunk);
@@ -129,12 +135,67 @@ class WebSocketReceiver {
         case SEND_ECHO:
           this._sendEcho(); // fifth step is to send the echo back to the client
           break;
+        case GET_CLOSE_INFO:
+          this._getCloseInfo(); // sixth step is to get the close frame information
+          break;
       }
     } while (this._taskLoop);
   }
+  private _sendClose(closeCode: number, closeReason: string) {
+    // extract and/or construct the closure code & reason
+    let closureCode =
+      typeof closeCode !== "undefined" && closeCode ? closeCode : 1000;
+    console.log("closureCode =: " + closureCode);
+    let closureReason =
+      typeof closeReason !== "undefined" && closeReason ? closeReason : "";
 
+    // get the length of the binary representation our reason
+    const closureReasonBuffer = Buffer.from(closureReason, "utf8");
+    const closureReasonLength = closureReasonBuffer.length;
+    // construct the close frame payload (mandatory 2 bytes closure code, + payload)
+    const closeFramePayload = Buffer.alloc(2 + closureReasonLength);
+    // write the close code into the payload
+    closeFramePayload.writeUInt16BE(closureCode, 0);
+    closureReasonBuffer.copy(closeFramePayload, 2);
+
+    // final step: create the first byte and second byte, and then create the final frame to send back to the client
+    const firstByte = 0x88; // 10001000
+    const secondByte = closeFramePayload.length;
+    const mandatoryCloseHeaders = Buffer.from([firstByte, secondByte]);
+    // now create the final close frame
+    const closeFrame = Buffer.concat([
+      mandatoryCloseHeaders,
+      closeFramePayload,
+    ]);
+    // send the close frame to the client
+    this._socket.write(closeFrame);
+    this._socket.end();
+    // reset the values
+    this._reset();
+  }
+
+  private _getCloseInfo() {
+    // control frames cannot be fragmented. so we know that one fragment exists in our array that contains our entire closure body data
+    let closeFramePayload = this._fragments[0];
+    if (!closeFramePayload) {
+      this._sendClose(1008, "Next time, pls set the status code.");
+      return;
+    }
+    let closeCode = closeFramePayload.readUint16BE();
+    let closeReason = closeFramePayload.toString("utf8", 2);
+    if (closeCode === 1001) {
+      this._socket.end();
+      this._reset();
+      return;
+    }
+    console.log(
+      `Received close frame with code: ${closeCode} and reason: ${closeReason}`
+    );
+    let serverResponse = "Sorry to see you go. Please open up a new connection";
+    this._sendClose(closeCode, serverResponse);
+  }
   private _getInfo() {
-    // check whether we have enough bytes in our internal buffer to process at the very least frame header information
+    // check whether we have eno ugh bytes in our internal buffer to process at the very least frame header information
     if (this._bufferedBytesLength < CONSTANTS.MIN_FRAME_SIZE) {
       // wait for additional chunks via the 'data' event on our socket object
       this._taskLoop = false;
@@ -150,7 +211,13 @@ class WebSocketReceiver {
     this._initialPayloadSizeIndicator = secondByte & 0x7f;
     // if data is not masked, then throw an error
     if (!this._masked) {
+      // this._sendClose()
       throw Error("Received data is not masked");
+    }
+    // **** PING AND PONG FRAMES
+    if ([CONSTANTS.OPCODE_PING, CONSTANTS.OPCODE_PONG].includes(this._opcode)) {
+      // send a close frame and close the underlying WS connection
+      this._sendClose(1003, "the server does not support ping or pong frames.");
     }
     this._task = GET_LENGTH;
   }
@@ -204,9 +271,12 @@ class WebSocketReceiver {
   }
   private _processLength() {
     this._totalPayloadLength += this._framePayloadLength;
-    // throw error if user attempts to abuse the WS server
+    // Close the websocket connection if user attempts to abuse our WS server
     if (this._totalPayloadLength > this._maxPlayed) {
-      // later send a close frame back to the client and terminate the connection
+      this._sendClose(
+        1009,
+        "The WS server doesn't support such huge message length"
+      );
       throw Error("Payload is too large");
     }
     // unmask the payload data
@@ -236,11 +306,22 @@ class WebSocketReceiver {
     // unmask the payload data
     const unmaskedPayload = FUNCTIONS.unmaskPayload(payloadBuffer, this._mask);
     // console.log("unmasked payload: " + unmaskedPayload.toString("utf8"));
-    // TEXT FRAME
     // push decode / unmasked data into our fragments array
     if (payloadBuffer?.length) {
       this._fragments.push(unmaskedPayload);
     }
+
+    // **** CLOSE FRAME
+    if (this._opcode === CONSTANTS.OPCODE_CLOSE) {
+      this._task = GET_CLOSE_INFO;
+      return;
+    }
+    if (this._framePayloadLength <= 0) {
+      this._sendClose(1008, "The text area can't be empty.");
+      return;
+    }
+
+    // TEXT FRAME
     // if this is the final fragment, then we can join all the fragments together
     if (this._fin) {
       console.log(

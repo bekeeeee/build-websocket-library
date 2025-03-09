@@ -8,6 +8,7 @@
       <h1>WebSockets Echo Demo</h1>
       <button type="submit" id="open_ws">Open WS</button>
       <div id="status">Status: Not connected</div>
+      <div id="server_response"></div>
       <!-- message table -->
       <ul id="table"></ul>
       <!-- form -->
@@ -31,6 +32,7 @@
       //form
       let form = document.getElementById("form");
       // other message related items
+      let server_response = document.getElementById("server_response");
       let socketStatus = document.getElementById("status");
       let table = document.getElementsByTagName("ul")[0];
       let message = document.getElementById("message");
@@ -40,7 +42,7 @@
 
       // *** WEBSOCKET SERVER ***
       open_ws_btn.addEventListener("click", () => {
-        // BUTTON styling. when button is clicked, diable its use.
+        // BUTTON styling. when button is clicked, disable its use.
         open_ws_btn.disabled = true;
         open_ws_btn.style.background = "gray";
         open_ws_btn.style.pointerEvents = "none";
@@ -60,6 +62,7 @@
           console.log("SOCKET CONNECTING STATUS IS: " + socket.readyState);
           // reset values
           table.innerHTML = "";
+          server_response.innerHTML = "";
           // provide client-side feedback
           console.log("SOCKET CONNECTING STATUS IS: " + socket.readyState);
           socketStatus.innerHTML = `Connected to: ${openEvent.currentTarget.url}`;
@@ -83,7 +86,7 @@
             // read the Blob as text
             reader.readAsText(messageEvent.data);
 
-            // when the Blob has succesfully been read, listen for the onload event
+            // when the Blob has successfully been read, listen for the onload event
             reader.onload = function (e) {
               const msg = e.target.result; // this will contain the Blob content as text
               // insert the data into our HTML table
@@ -103,22 +106,42 @@
           table.innerHTML = "";
           // using JavaScript's switch statement to improve our code
           switch (closeEventObject.code) {
-            case 1006: // network problem (e.g. your websocket server is not running)
-              socketStatus.innerHTML =
-                "Something is wrong with your WS newtork connection";
-              break;
             case 1001: // if a peer (client or server) closes the connection immediately
               socketStatus.innerHTML = `Disconnected reason: ${closeEventObject.reason}`;
               table.innerHTML = "";
               break;
+            case 1002: // if a peer (client or server) does not adhere to the protocol spec
+              socketStatus.innerHTML = `Disconnected reason: ${closeEventObject.reason}`;
+              table.innerHTML = "";
+              server_response.innerHTML = `The server responded: ${closeEventObject.reason}`;
+              break;
+            case 1003:
+              socketStatus.innerHTML = `Unsupported data type.`;
+              table.innerHTML = "";
+              server_response.innerHTML = `The server responded: ${closeEventObject.reason}`;
+              break;
+            case 1006: // network problem (e.g. your websocket server is not running)
+              socketStatus.innerHTML =
+                "Something is wrong with your WS network connection";
+              break;
+            case 1008: // server policy breached
+              socketStatus.innerHTML = "You violated server policy.";
+              server_response.innerHTML = `The server responded: ${closeEventObject.reason}`;
+              break;
+            case 1009:
+              socketStatus.innerHTML = `Data too long.`;
+              table.innerHTML = "";
+              server_response.innerHTML = `The server responded: ${closeEventObject.reason}`;
+              break;
             default: // when the client hits the close websocket button
               socketStatus.innerHTML = `You disconnected by clicking the Close button.`;
+              server_response.innerHTML = `The server responded: ${closeEventObject.reason}`;
           }
 
           // FORM REMOVAL
           form.classList.remove("show");
           message.setAttribute("required", "true");
-          // BUTTON styling. when button is clicked, diable its use.
+          // BUTTON styling. when button is clicked, disable its use.
           open_ws_btn.disabled = false;
           open_ws_btn.style.background = "";
           open_ws_btn.style.pointerEvents = "";
@@ -127,7 +150,7 @@
 
         // ERROR EVENT
         socket.onerror = error => {
-          console.log("Error event was throgn. ERROR OBJECT: ", error);
+          console.log("Error event was thrown. ERROR OBJECT: ", error);
           socketStatus.innerHTML = "Error.";
           socketStatus.className = "closed";
         };
